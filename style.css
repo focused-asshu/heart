@@ -1,106 +1,46 @@
-:root {
-  --baby-pink: #ff9fc9;
-  --soft-pink: #ff8bbe;
-  --stage-size: min(94vw, 640px);
+* {
+  box-sizing: border-box;
 }
-
-* { box-sizing: border-box; }
 
 html,
 body {
+  width: 100%;
   height: 100%;
   margin: 0;
 }
 
 body {
   overflow: hidden;
-  background: #010101;
-  color: var(--baby-pink);
+  background: #000;
+  color: #ff6aa8;
   font-family: Inter, "Helvetica Neue", Arial, system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: geometricPrecision;
 }
 
 .scene {
-  min-height: 100%;
+  position: fixed;
+  inset: 0;
   display: grid;
   place-items: center;
-  padding: clamp(0.75rem, 3vw, 2rem);
+  background: #000;
+  touch-action: manipulation;
   user-select: none;
 }
 
-.heart-stage {
-  position: relative;
-  width: var(--stage-size);
-  height: min(76vh, var(--stage-size));
-  min-height: 310px;
-  display: grid;
-  place-items: center;
-  perspective: 980px;
-  perspective-origin: 50% 48%;
-  touch-action: manipulation;
+#heartCanvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
 }
 
-.heart {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  transform-style: preserve-3d;
-  animation: heartTurn 22s linear infinite, heartBreath 7.5s ease-in-out infinite;
-  will-change: transform;
-}
-
-.love-text {
+.sr-only {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  color: var(--baby-pink);
-  font-size: clamp(0.48rem, 1.18vw, 0.78rem);
-  font-weight: 350;
-  line-height: 1;
-  letter-spacing: 0.02em;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
   white-space: nowrap;
-  transform-origin: center;
-  transform-style: preserve-3d;
-  backface-visibility: visible;
-  text-shadow:
-    0 0 2px rgba(255, 235, 245, 0.52),
-    0 0 6px rgba(255, 159, 201, 0.42),
-    0 0 11px rgba(255, 139, 190, 0.25);
-  will-change: transform;
-}
-
-@keyframes heartTurn {
-  from { rotate: y -18deg; }
-  to { rotate: y 342deg; }
-}
-
-@keyframes heartBreath {
-  0%, 100% { scale: 1; }
-  50% { scale: 1.025; }
-}
-
-@media (max-width: 540px) {
-  :root { --stage-size: 99vw; }
-
-  .heart-stage {
-    height: min(66vh, 112vw);
-    min-height: 285px;
-    perspective: 780px;
-  }
-
-  .love-text {
-    font-size: clamp(0.42rem, 2.05vw, 0.62rem);
-    text-shadow:
-      0 0 1px rgba(255, 235, 245, 0.55),
-      0 0 5px rgba(255, 159, 201, 0.34);
-  }
-}
-
-@media (max-height: 620px) {
-  .heart-stage { height: 72vh; min-height: 250px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .heart { animation: none; transform: rotateY(-18deg); }
+  border: 0;
 }

@@ -3,17 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="A crisp rotating baby-pink heart made from repeated I love you text bands." />
+    <meta name="description" content="A calm floating 3D heart drawn with soft pink I love you text ribbons." />
     <title>For You ❤️</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <main class="scene" aria-label="Romantic animated heart">
-      <section class="heart-stage" id="heartStage" aria-label="Rotating heart made from I love you text">
-        <div class="heart" id="heart" aria-hidden="true"></div>
-      </section>
+    <main class="scene" aria-label="Romantic animated heart made from I love you text">
+      <canvas id="heartCanvas" aria-hidden="true"></canvas>
+      <p class="sr-only">A slowly rotating hollow heart made from repeated I love you heart text.</p>
     </main>
 
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
   </body>
 </html>

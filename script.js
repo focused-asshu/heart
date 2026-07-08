@@ -1,20 +1,21 @@
 import * as THREE from 'https://unpkg.com/three@0.165.0/build/three.module.js';
 
 const canvas = document.querySelector('#heartCanvas');
-
 const PHRASE = 'I love you';
-const REVOLUTION_SECONDS = 26;
-const HEART_SEGMENTS = 128;
-const TUBE_RINGS = 7;
-const TUBE_RADIUS = 1.15;
-const HEART_SCALE = 0.58;
-const HEART_CENTER_Y = -1.45;
+
+const HEART_SEGMENTS = 150;
+const CROSS_SECTION_BANDS = 9;
+const TUBE_RADIUS = 1.08;
+const HEART_SCALE = 0.56;
+const HEART_CENTER_Y = -1.35;
+const TREAD_REVOLUTION_SECONDS = 7.5;
+const SUBTLE_ORBIT_SECONDS = 80;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
 
 const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
-camera.position.set(0, 0.3, 42);
+camera.position.set(0, 0.2, 42);
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -25,66 +26,67 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-const heartWheel = new THREE.Group();
-heartWheel.rotation.x = THREE.MathUtils.degToRad(8);
-scene.add(heartWheel);
+const heartTire = new THREE.Group();
+heartTire.rotation.x = THREE.MathUtils.degToRad(7);
+scene.add(heartTire);
 
 const textTexture = createTextTexture();
-const textSprites = [];
+const treadMeshes = [];
 const clock = new THREE.Clock();
+const tempMatrix = new THREE.Matrix4();
 
-buildHeartTire();
+buildHeartTubeTread();
 resize();
 window.addEventListener('resize', resize, { passive: true });
 renderer.setAnimationLoop(animate);
 
+// Classic parametric heart curve used as the tube/tire centerline.
 function heartPoint(t) {
-  const x = 16 * Math.sin(t) ** 3;
-  const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
-  return new THREE.Vector2(x * HEART_SCALE, y * HEART_SCALE + HEART_CENTER_Y);
+  return new THREE.Vector3(
+    16 * Math.sin(t) ** 3 * HEART_SCALE,
+    (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * HEART_SCALE + HEART_CENTER_Y,
+    0,
+  );
 }
 
+// Analytic derivative of the heart curve. This becomes the direction text reads along.
 function heartTangent(t) {
-  const dx = 48 * Math.sin(t) ** 2 * Math.cos(t);
-  const dy = -13 * Math.sin(t) + 10 * Math.sin(2 * t) + 6 * Math.sin(3 * t) + 4 * Math.sin(4 * t);
-  return new THREE.Vector2(dx, dy).normalize();
+  return new THREE.Vector3(
+    48 * Math.sin(t) ** 2 * Math.cos(t) * HEART_SCALE,
+    (-13 * Math.sin(t) + 10 * Math.sin(2 * t) + 6 * Math.sin(3 * t) + 4 * Math.sin(4 * t)) * HEART_SCALE,
+    0,
+  ).normalize();
 }
 
-function buildHeartTire() {
+function buildHeartTubeTread() {
+  const plane = new THREE.PlaneGeometry(2.12, 0.38);
+
   for (let i = 0; i < HEART_SEGMENTS; i += 1) {
     const t = (i / HEART_SEGMENTS) * Math.PI * 2;
     const center = heartPoint(t);
     const tangent = heartTangent(t);
-    const normal = new THREE.Vector2(-tangent.y, tangent.x).normalize();
-    const tangentAngle = Math.atan2(tangent.y, tangent.x);
 
-    for (let ring = 0; ring < TUBE_RINGS; ring += 1) {
-      const a = (ring / TUBE_RINGS) * Math.PI * 2;
-      const radialOffset = Math.cos(a) * TUBE_RADIUS;
-      const depthOffset = Math.sin(a) * TUBE_RADIUS * 1.12;
-      const material = new THREE.SpriteMaterial({
+    // For this flat heart curve, the normal points inward/outward in the XY plane and
+    // the binormal points through the screen. Together they define a circular tire tube.
+    const normal = new THREE.Vector3(-tangent.y, tangent.x, 0).normalize();
+    const binormal = new THREE.Vector3(0, 0, 1);
+
+    for (let band = 0; band < CROSS_SECTION_BANDS; band += 1) {
+      const phase = (band / CROSS_SECTION_BANDS) * Math.PI * 2 + (i % 2) * 0.16;
+      const material = new THREE.MeshBasicMaterial({
         map: textTexture,
-        color: new THREE.Color(0xff82b8),
+        color: 0xff86bd,
         transparent: true,
         depthWrite: false,
         depthTest: true,
-        opacity: 0.78,
+        blending: THREE.AdditiveBlending,
+        opacity: 0.82,
+        side: THREE.DoubleSide,
       });
-      const sprite = new THREE.Sprite(material);
-
-      sprite.position.set(
-        center.x + normal.x * radialOffset,
-        center.y + normal.y * radialOffset,
-        depthOffset,
-      );
-      sprite.scale.set(2.25, 0.46, 1);
-      sprite.material.rotation = tangentAngle;
-      sprite.userData.baseOpacity = 0.38 + 0.4 * ((Math.sin(a) + 1) / 2);
-      sprite.userData.ringPhase = a;
-      sprite.userData.tangentAngle = tangentAngle;
-
-      heartWheel.add(sprite);
-      textSprites.push(sprite);
+      const mesh = new THREE.Mesh(plane, material);
+      mesh.userData = { center, tangent, normal, binormal, phase };
+      heartTire.add(mesh);
+      treadMeshes.push(mesh);
     }
   }
 }
@@ -96,43 +98,58 @@ function createTextTexture() {
   const ctx = textureCanvas.getContext('2d');
 
   ctx.clearRect(0, 0, textureCanvas.width, textureCanvas.height);
-  ctx.font = '500 42px Inter, Helvetica Neue, Arial, sans-serif';
+  ctx.font = '600 42px Inter, Helvetica Neue, Arial, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.shadowColor = 'rgba(255, 130, 184, 0.24)';
-  ctx.shadowBlur = 5;
-  ctx.fillStyle = '#ff82b8';
+
+  // Keep the glow deliberately restrained so the tread remains crisp and readable.
+  ctx.shadowColor = 'rgba(255, 128, 190, 0.26)';
+  ctx.shadowBlur = 6;
+  ctx.fillStyle = '#ff8fc5';
   ctx.fillText(PHRASE, textureCanvas.width / 2, textureCanvas.height / 2 + 2);
 
   const texture = new THREE.CanvasTexture(textureCanvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 8;
+  texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  texture.needsUpdate = true;
   return texture;
 }
 
 function animate() {
   const elapsed = clock.getElapsedTime();
-  const rotationProgress = (elapsed % REVOLUTION_SECONDS) / REVOLUTION_SECONDS;
-  const breath = 1 + Math.sin(elapsed * 0.85) * 0.006;
+  const crossSectionSpin = (elapsed / TREAD_REVOLUTION_SECONDS) * Math.PI * 2;
 
-  heartWheel.rotation.y = rotationProgress * Math.PI * 2;
-  heartWheel.rotation.z = Math.sin(elapsed * 0.18) * 0.035;
-  heartWheel.scale.setScalar(breath);
-  updateDepthFade();
+  // Only a very slow overall yaw is used for depth; the tread rotation is the main motion.
+  heartTire.rotation.y = Math.sin((elapsed / SUBTLE_ORBIT_SECONDS) * Math.PI * 2) * 0.18;
+  heartTire.rotation.z = Math.sin(elapsed * 0.16) * 0.012;
+
+  for (const mesh of treadMeshes) {
+    updateTreadMesh(mesh, crossSectionSpin);
+  }
 
   renderer.render(scene, camera);
 }
 
-function updateDepthFade() {
-  const worldPosition = new THREE.Vector3();
-  for (const sprite of textSprites) {
-    sprite.getWorldPosition(worldPosition);
-    const frontAmount = THREE.MathUtils.clamp((worldPosition.z + 8) / 16, 0, 1);
-    const opacity = THREE.MathUtils.lerp(0.18, sprite.userData.baseOpacity, frontAmount);
-    const scaleBoost = THREE.MathUtils.lerp(0.92, 1.06, frontAmount);
-    sprite.material.opacity = opacity;
-    sprite.scale.set(2.25 * scaleBoost, 0.46 * scaleBoost, 1);
-  }
+function updateTreadMesh(mesh, crossSectionSpin) {
+  const { center, tangent, normal, binormal, phase } = mesh.userData;
+  const angle = phase + crossSectionSpin;
+
+  // Tire-tread animation: every text tile moves around the circular cross-section
+  // while staying attached to the heart-shaped centerline.
+  const radial = normal.clone().multiplyScalar(Math.cos(angle)).addScaledVector(binormal, Math.sin(angle)).normalize();
+  const position = center.clone().addScaledVector(radial, TUBE_RADIUS);
+
+  // Text lies on the tube surface: X follows the heart tangent, Y follows the local
+  // cross-section radial direction, and Z is the local surface normal for depth tests.
+  const surfaceNormal = new THREE.Vector3().crossVectors(tangent, radial).normalize();
+  tempMatrix.makeBasis(tangent, radial, surfaceNormal);
+  mesh.quaternion.setFromRotationMatrix(tempMatrix);
+  mesh.position.copy(position);
+
+  const frontDepth = THREE.MathUtils.clamp((position.z + TUBE_RADIUS) / (TUBE_RADIUS * 2), 0, 1);
+  mesh.material.opacity = THREE.MathUtils.lerp(0.16, 0.9, frontDepth);
+  const scale = THREE.MathUtils.lerp(0.92, 1.06, frontDepth);
+  mesh.scale.setScalar(scale);
 }
 
 function resize() {
@@ -140,7 +157,7 @@ function resize() {
   const height = window.innerHeight;
   renderer.setSize(width, height, false);
   camera.aspect = width / height;
-  camera.position.z = width < 560 ? 52 : 42;
-  camera.fov = width < 560 ? 44 : 38;
+  camera.position.z = width < 560 ? 51 : 42;
+  camera.fov = width < 560 ? 45 : 38;
   camera.updateProjectionMatrix();
 }

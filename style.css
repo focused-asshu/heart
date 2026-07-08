@@ -12,7 +12,7 @@ body {
 body {
   overflow: hidden;
   background: #000;
-  color: #ff6aa8;
+  color: #ff7fba;
   font-family: Inter, "Helvetica Neue", Arial, system-ui, sans-serif;
 }
 
@@ -21,7 +21,9 @@ body {
   inset: 0;
   display: grid;
   place-items: center;
-  background: #000;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(255, 72, 156, 0.09), transparent 32%),
+    #000;
   touch-action: manipulation;
   user-select: none;
 }
@@ -30,7 +32,7 @@ body {
   display: block;
   width: 100vw;
   height: 100vh;
-  background: #000;
+  background: transparent;
 }
 
 .sr-only {
